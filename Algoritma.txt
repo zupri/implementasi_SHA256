@@ -1,0 +1,418 @@
+Implementasi dokumen SHA-256 kedalam bahasa pemrograman python
+
+Dokumen yang diperlukan :
+* NIST.FIPS.180-4.pdf (https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
+
+Dokumen lain :
+* file text.txt untuk test Algoritma
+
+
+Untuk Implementasi ini dibagi menjadi dua tahap : 
+- preprocessing dan 
+- hash computation
+
+Preprocessing meliputi :
+- padding message, 
+- parsing padding message kedalam block m-bit, dan
+- set nilai inisial hash.
+
+Hash computation :
+Melakukan proses computation untuk menghasilkan message digest.
+
+Berikut tahapan implementasi.
+
+A. Preprocessing *(FIPS 180-4 hal 13 bagian 5)
+Preprocessing adalah tahapan awal untuk mempersiapkan message sebelum tahap pemrosesan dilakukan.
+Tujuan dari padding message adalah agar message menjadi kelipatan dari 512 *(FIPS 180-4 hal 3 tabel.1 ) 
+dengan Menambahkan bit 1 sebanyak satu digit dibelakang message dan bit 0 sebanyak k hingga menjadi kelipatan 512.
+
+A.1 Padding Message *(FIPS 180-4 hal 13 bagian 5.1)
+Padding message bertujuan agar message menjadi kelipatan dari 512 dimana sha-256 memiliki blok size 512 bit.
+
+A.1.a Menambahkan bit '1' di akhir message *(FIPS 180-4 hal 13 bagian 5.1.1).
+      Penambahan bit 1 di akhir message bertujuan sebagai penanda akhir message.
+      
+      *dalam implementasi program karena mesage selalu kelipatan 8 bit maka diakhir message dapat ditambahkan
+      bit '10000000'.
+
+      Contoh :
+      Message asli berupa text atau string "abc".
+
+      M = "abc" 
+      M = 616263 hex (ASCII)
+      M = 011000010110001001100011 (sebelum ditambah bit '1')
+      M = 0110000101100010011000111 (setelah ditambah bit '1')
+      
+      atau bisa juga ditambahkan '10000000' karena umumnya komputer menggunakan data 1 byte (8 bit)
+
+      M = 011000010110001001100011 (sebelum ditambah bit '10000000')
+      M = 01100001011000100110001110000000 (setelah ditambah bit '10000000')
+      M = 61626380 hex
+
+A.1.b Menambahkan bit '0' sebanyak 'k' bit. *(FIPS 180-4 hal 13 bagian 5.1.1).
+      Rumusnya l+1+k = 448 mod 512 (dalam satuan bit).
+      dalam implementasi program karena mesage selalu kelipatan 8 byte maka rumus dibuat menjadi
+      l+8+k = 448 mod 512
+
+      Contoh :
+      l+1+k = 448 mod 512 maka k = 423
+      artinya tambahkan '0' sebanyak 423 kali.
+
+      atau dengan rumus 
+      l+8+k = 448 mod 512 maka k = 416
+      artinya tambahkan '0' sebanyak 416 dimana sebelumnya sudah ditambahkan '0' sebanyak 7 dari langkah A.1.a ('1000000')
+      sehingga menjadi 416+7 = 423
+
+      M = 6162638000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 hex
+
+A.1.c Menambahkan informasi panjang message asli kedalam bentuk biner 64 bit. *(FIPS 180-4 hal 13 bagian 5.1.1).
+      Misal panjang 24 bit maka dalam bentuk binernya menjadi '11000'
+      karena harus dalam 64 bit maka dibuat menjadi '00000000 00000000 00000000 00000000 00000000 00000000 00000000 00011000'
+
+      *Dari size ini kita dapat mengetahui panjang maksimal message yang dapat diproses yaitu 2^64-1 = 18.446.744.073.709.551.615 bit
+      atau 2.305.843.009.213.693.951 byte atau sekitar 2.097.152 Terabyte. *(FIPS 180-4 hal 21 bagian 6.2)
+
+      Contoh :
+      M = "abc"
+
+      Panjang dari message M adalah 3 Char atau 3 byte atau 24 bit
+      24 desimal = 00011000 biner = 18 hex (0000000000000018)
+      
+      M    = 6162638000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 hex
+      Setelah penambahan informasi panjang message :
+      Mpad = 61626380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018
+
+A.1.d Cek padding message
+      Cek apakah Padding message (message yang sudah dipadding)sudah modulus 512 = 0.
+      jika sudah benar maka lanjut ketahap parsing block.
+
+      Proses padding selesai dilanjut ke tahap Parsing untuk dibagi menjadi N blok
+      dengan tiap-tiap blok memiliki panjang m bit.
+
+A.2 Parsing Padding Message *(FIPS 180-4 hal 14 bagian 5.2.1)
+    Message yang sudah di padding tadi kemudian diparsing menjadi N buah blok masing-masing block panjangnya m-bit 
+    (M(1), M(2), ..., M(N)) Untuk SHA-1, SHA-224 and SHA-256, diparsing kedalam N blok dengan tiap-tiap blok 
+    panjangnya 512-bit.
+
+    Contoh :
+    M = "abc"
+
+    N = Panjang Mpad dibagi 512 = 1 buah blok
+    M(1) = 61626380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018
+    
+A.3 Setting nilai inisial hash *(FIPS 180-4 hal 15 bagian 5.3.3)
+    H(0)0 = 6a09e667
+    H(0)1 = bb67ae85
+    H(0)2 = 3c6ef372
+    H(0)3 = a54ff53a
+    H(0)4 = 510e527f
+    H(0)5 = 9b05688c
+    H(0)6 = 1f83d9ab
+    H(0)7 = 5be0cd19
+
+B. Hash Computation SHA256 *(FIPS 180-4 hal 22 bagian 6.2.2)
+Setelah message kita padding dan parsing serta menyiapkan inisial hash value, selanjutnya yaitu prosess hashing-nya.
+
+Hash computation menggunakan fungsi pada FIPS 180-4 hal 10 bagian 4.1.2 dan konstanta pada FIPS 180-4 hal 11 bagian 4.2.2
+
+Konstanta :
+0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+
+Tahapan-tahapan Hash computation ini akan diulang sebanyak N block M(1), M(2),....M(N) (For i=1 to N).
+tiap-tiap blok akan diproses dengan langkah B.1 dibawah ini.
+
+B.1 Menyiapkan message schedule (W[t]) *(FIPS 180-4 hal 22 bagian 6.2.2 no.1 )
+
+    W[t] = M(i)[t]
+
+    M(i) adalah message blok i dari total N block dengan size m bit 
+    m bit adalah jumlah bit dalam message block dimana untuk SHA256 jumlahnya 512 bit.
+    
+    proses ini akan diulang sebanyak t 64 kali ( t = 0 s/d 63).
+
+    B.1.a Untuk t dari 0 s/d 15.
+    
+          W[t] = M(i)[t]
+          
+          M(i)[t] ini merupakan message block yang dipecah menjadi 16 kelompok yang masing-masing
+          kelompok memiliki panjang word 32 bit : M(i)[0], M(i)[1], M(i)[2], ..., M(i)[15].
+
+          Contoh M = "abc" :
+          M(1) = 61626380 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+                 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000018
+          
+          Untuk t dari 0 s/d 15 :
+              W[0]  = M(1)[0]  =  61626380
+              W[1]  = M(1)[1]  =  00000000
+              W[2]  = M(1)[2]  =  00000000
+              W[3]  = M(1)[3]  =  00000000
+              W[4]  = M(1)[4]  =  00000000
+              W[5]  = M(1)[5]  =  00000000
+              W[6]  = M(1)[6]  =  00000000
+              W[7]  = M(1)[7]  =  00000000
+              W[8]  = M(1)[8]  =  00000000
+              W[9]  = M(1)[9]  =  00000000
+              W[10] = M(1)[10] =  00000000
+              W[11] = M(1)[11] =  00000000
+              W[12] = M(1)[12] =  00000000
+              W[13] = M(1)[13] =  00000000
+              W[14] = M(1)[14] =  00000000
+              W[15] = M(1)[15] =  00000018
+
+    B.1.b Untuk t dari 16 s/d 63.
+
+          Sigma1(W[t-2]) + W[t-7] + sigma0(W[t-15]) + W[t-16]
+          
+          Contoh M = "abc" :
+          M(1) = 61626380 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+                 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000018
+
+          Untuk t dari 16 s/d 63 :
+          W[16] = M(1)[16] =  61626380
+          W[17] = M(1)[17] =  000f0000
+          W[18] = M(1)[18] =  7da86405
+          W[19] = M(1)[19] =  600003c6
+          W[20] = M(1)[20] =  3e9d7b78
+          W[21] = M(1)[21] =  0183fc00
+          W[22] = M(1)[22] =  12dcbfdb
+          W[23] = M(1)[23] =  e2e2c38e
+          W[24] = M(1)[24] =  c8215c1a
+          W[25] = M(1)[25] =  b73679a2
+          W[26] = M(1)[26] =  e5bc3909
+          W[27] = M(1)[27] =  32663c5b
+          W[28] = M(1)[28] =  9d209d67
+          W[29] = M(1)[29] =  ec8726cb
+          W[30] = M(1)[30] =  702138a4
+          W[31] = M(1)[31] =  d3b7973b
+          W[32] = M(1)[32] =  93f5997f
+          W[33] = M(1)[33] =  3b68ba73
+          W[34] = M(1)[34] =  aff4ffc1
+          W[35] = M(1)[35] =  f10a5c62
+          W[36] = M(1)[36] =  0a8b3996
+          W[37] = M(1)[37] =  72af830a
+          W[38] = M(1)[38] =  9409e33e
+          W[39] = M(1)[39] =  24641522
+          W[40] = M(1)[40] =  9f47bf94
+          W[41] = M(1)[41] =  f0a64f5a
+          W[42] = M(1)[42] =  3e246a79
+          W[43] = M(1)[43] =  27333ba3
+          W[44] = M(1)[44] =  0c4763f2
+          W[45] = M(1)[45] =  840abf27
+          W[46] = M(1)[46] =  7a290d5d
+          W[47] = M(1)[47] =  065c43da
+          W[48] = M(1)[48] =  fb3e89cb
+          W[49] = M(1)[49] =  cc7617db
+          W[50] = M(1)[50] =  b9e66c34
+          W[51] = M(1)[51] =  a9993667
+          W[52] = M(1)[52] =  84badedd
+          W[53] = M(1)[53] =  c21462bc
+          W[54] = M(1)[54] =  1487472c
+          W[55] = M(1)[55] =  b20f7a99
+          W[56] = M(1)[56] =  ef57b9cd
+          W[57] = M(1)[57] =  ebe6b238
+          W[58] = M(1)[58] =  9fe3095e
+          W[59] = M(1)[59] =  78bc8d4b
+          W[60] = M(1)[60] =  a43fcf15
+          W[61] = M(1)[61] =  668b2ff8
+          W[62] = M(1)[62] =  eeaba2cc
+          W[63] = M(1)[63] =  12b1edeb
+
+
+B.2 Inisialisasi delapan working variable a,b,c,d,e,f,g dan h dengan Hash ke-(i-1)
+    Jika hanya ada satu message block maka Hash ke-((i-1)=0) atau ditulis H(0) 
+    working variable sama dengan nilai inisial hash.
+
+    H(i) adalah hash value ke-i
+    H(0) adalah initial hash value atau hash value.
+    H(N) adalah final hash value yang digunakan untuk menentukan message digest.
+    
+
+    a = H(i-1)[0]
+    b = H(i-1)[1]
+    c = H(i-1)[2]
+    d = H(i-1)[3]
+    e = H(i-1)[4]
+    f = H(i-1)[5]
+    g = H(i-1)[6]
+    h = H(i-1)[7]
+    
+    Contoh :
+    M = "abc"
+
+    working variable dengan hash value ke-(i-1) block ke-1 dari total 1 block :
+    a = H(0)0 = 0x6a09e667 
+    b = H(0)1 = 0xbb67ae85 
+    c = H(0)2 = 0x3c6ef372 
+    d = H(0)3 = 0xa54ff53a 
+    e = H(0)4 = 0x510e527f 
+    f = H(0)5 = 0x9b05688c 
+    g = H(0)6 = 0x1f83d9ab 
+    h = H(0)7 = 0x5be0cd19
+
+
+B.3 Menghitung working variable yang baru.
+    
+    Hasil di atas (bagian B.2) diproses sebanyak 64 kali untuk mendapat working variable yang baru.
+    nilai t ke-64 akan diambil sebagai working variable baru.
+
+    for t in range(64):
+        t1 = ((h + opr.sum1(e) + opr.ch(e, f, g) + opr.K[t] +
+               int.from_bytes(message_schedule[t], 'big')) % 2**32)
+        
+        t2 = (opr.sum0(a) + opr.maj(a, b, c)) % 2**32
+        
+        h = g
+        g = f
+        f = e
+        e = (d + t1) % 2**32
+        d = c
+        c = b
+        b = a
+        a = (t1 + t2) % 2**32
+    
+
+    t1 dan t2 adalah Temporary w-bit word yang digunakan untuk hash computation.
+
+    Contoh:
+    
+    M = "abc"
+
+    t(t) |     a     |     b    |    c     |     d    |     e    |     f    |     g    |     h     |
+    t(0) : 0x5d6aebcd 0x6a09e667 0xbb67ae85 0x3c6ef372 0xfa2a4622 0x510e527f 0x9b05688c 0x1f83d9ab 
+    t(1) : 0x5a6ad9ad 0x5d6aebcd 0x6a09e667 0xbb67ae85 0x78ce7989 0xfa2a4622 0x510e527f 0x9b05688c 
+    t(2) : 0xc8c347a7 0x5a6ad9ad 0x5d6aebcd 0x6a09e667 0xf92939eb 0x78ce7989 0xfa2a4622 0x510e527f 
+    t(3) : 0xd550f666 0xc8c347a7 0x5a6ad9ad 0x5d6aebcd 0x24e00850 0xf92939eb 0x78ce7989 0xfa2a4622 
+    t(4) : 0x4409a6a 0xd550f666 0xc8c347a7 0x5a6ad9ad 0x43ada245 0x24e00850 0xf92939eb 0x78ce7989 
+    t(5) : 0x2b4209f5 0x4409a6a 0xd550f666 0xc8c347a7 0x714260ad 0x43ada245 0x24e00850 0xf92939eb 
+    t(6) : 0xe5030380 0x2b4209f5 0x4409a6a 0xd550f666 0x9b27a401 0x714260ad 0x43ada245 0x24e00850 
+    t(7) : 0x85a07b5f 0xe5030380 0x2b4209f5 0x4409a6a 0xc657a79 0x9b27a401 0x714260ad 0x43ada245 
+    t(8) : 0x8e04ecb9 0x85a07b5f 0xe5030380 0x2b4209f5 0x32ca2d8c 0xc657a79 0x9b27a401 0x714260ad 
+    t(9) : 0x8c87346b 0x8e04ecb9 0x85a07b5f 0xe5030380 0x1cc92596 0x32ca2d8c 0xc657a79 0x9b27a401 
+    t(10) : 0x4798a3f4 0x8c87346b 0x8e04ecb9 0x85a07b5f 0x436b23e8 0x1cc92596 0x32ca2d8c 0xc657a79 
+    t(11) : 0xf71fc5a9 0x4798a3f4 0x8c87346b 0x8e04ecb9 0x816fd6e9 0x436b23e8 0x1cc92596 0x32ca2d8c 
+    t(12) : 0x87912990 0xf71fc5a9 0x4798a3f4 0x8c87346b 0x1e578218 0x816fd6e9 0x436b23e8 0x1cc92596 
+    t(13) : 0xd932eb16 0x87912990 0xf71fc5a9 0x4798a3f4 0x745a48de 0x1e578218 0x816fd6e9 0x436b23e8 
+    t(14) : 0xc0645fde 0xd932eb16 0x87912990 0xf71fc5a9 0xb92f20c 0x745a48de 0x1e578218 0x816fd6e9 
+    t(15) : 0xb0fa238e 0xc0645fde 0xd932eb16 0x87912990 0x7590dcd 0xb92f20c 0x745a48de 0x1e578218 
+    t(16) : 0x21da9a9b 0xb0fa238e 0xc0645fde 0xd932eb16 0x8034229c 0x7590dcd 0xb92f20c 0x745a48de 
+    t(17) : 0xc2fbd9d1 0x21da9a9b 0xb0fa238e 0xc0645fde 0x846ee454 0x8034229c 0x7590dcd 0xb92f20c 
+    t(18) : 0xfe777bbf 0xc2fbd9d1 0x21da9a9b 0xb0fa238e 0xcc899961 0x846ee454 0x8034229c 0x7590dcd 
+    t(19) : 0xe1f20c33 0xfe777bbf 0xc2fbd9d1 0x21da9a9b 0xb0638179 0xcc899961 0x846ee454 0x8034229c 
+    t(20) : 0x9dc68b63 0xe1f20c33 0xfe777bbf 0xc2fbd9d1 0x8ada8930 0xb0638179 0xcc899961 0x846ee454 
+    t(21) : 0xc2606d6d 0x9dc68b63 0xe1f20c33 0xfe777bbf 0xe1257970 0x8ada8930 0xb0638179 0xcc899961 
+    t(22) : 0xa7a3623f 0xc2606d6d 0x9dc68b63 0xe1f20c33 0x49f5114a 0xe1257970 0x8ada8930 0xb0638179 
+    t(23) : 0xc5d53d8d 0xa7a3623f 0xc2606d6d 0x9dc68b63 0xaa47c347 0x49f5114a 0xe1257970 0x8ada8930 
+    t(24) : 0x1c2c2838 0xc5d53d8d 0xa7a3623f 0xc2606d6d 0x2823ef91 0xaa47c347 0x49f5114a 0xe1257970 
+    t(25) : 0xcde8037d 0x1c2c2838 0xc5d53d8d 0xa7a3623f 0x14383d8e 0x2823ef91 0xaa47c347 0x49f5114a 
+    t(26) : 0xb62ec4bc 0xcde8037d 0x1c2c2838 0xc5d53d8d 0xc74c6516 0x14383d8e 0x2823ef91 0xaa47c347 
+    t(27) : 0x77d37528 0xb62ec4bc 0xcde8037d 0x1c2c2838 0xedffbff8 0xc74c6516 0x14383d8e 0x2823ef91 
+    t(28) : 0x363482c9 0x77d37528 0xb62ec4bc 0xcde8037d 0x6112a3b7 0xedffbff8 0xc74c6516 0x14383d8e 
+    t(29) : 0xa0060b30 0x363482c9 0x77d37528 0xb62ec4bc 0xade79437 0x6112a3b7 0xedffbff8 0xc74c6516 
+    t(30) : 0xea992a22 0xa0060b30 0x363482c9 0x77d37528 0x109ab3a 0xade79437 0x6112a3b7 0xedffbff8 
+    t(31) : 0x73b33bf5 0xea992a22 0xa0060b30 0x363482c9 0xba591112 0x109ab3a 0xade79437 0x6112a3b7 
+    t(32) : 0x98e12507 0x73b33bf5 0xea992a22 0xa0060b30 0x9cd9f5f6 0xba591112 0x109ab3a 0xade79437 
+    t(33) : 0xfe604df5 0x98e12507 0x73b33bf5 0xea992a22 0x59249dd3 0x9cd9f5f6 0xba591112 0x109ab3a 
+    t(34) : 0xa9a7738c 0xfe604df5 0x98e12507 0x73b33bf5 0x85f3833 0x59249dd3 0x9cd9f5f6 0xba591112 
+    t(35) : 0x65a0cfe4 0xa9a7738c 0xfe604df5 0x98e12507 0xf4b002d6 0x85f3833 0x59249dd3 0x9cd9f5f6 
+    t(36) : 0x41a65cb1 0x65a0cfe4 0xa9a7738c 0xfe604df5 0x772a26b 0xf4b002d6 0x85f3833 0x59249dd3 
+    t(37) : 0x34df1604 0x41a65cb1 0x65a0cfe4 0xa9a7738c 0xa507a53d 0x772a26b 0xf4b002d6 0x85f3833 
+    t(38) : 0x6dc57a8a 0x34df1604 0x41a65cb1 0x65a0cfe4 0xf0781bc8 0xa507a53d 0x772a26b 0xf4b002d6 
+    t(39) : 0x79ea687a 0x6dc57a8a 0x34df1604 0x41a65cb1 0x1efbc0a0 0xf0781bc8 0xa507a53d 0x772a26b 
+    t(40) : 0xd6670766 0x79ea687a 0x6dc57a8a 0x34df1604 0x26352d63 0x1efbc0a0 0xf0781bc8 0xa507a53d 
+    t(41) : 0xdf46652f 0xd6670766 0x79ea687a 0x6dc57a8a 0x838b2711 0x26352d63 0x1efbc0a0 0xf0781bc8 
+    t(42) : 0x17aa0dfe 0xdf46652f 0xd6670766 0x79ea687a 0xdecd4715 0x838b2711 0x26352d63 0x1efbc0a0 
+    t(43) : 0x9d4baf93 0x17aa0dfe 0xdf46652f 0xd6670766 0xfda24c2e 0xdecd4715 0x838b2711 0x26352d63 
+    t(44) : 0x26628815 0x9d4baf93 0x17aa0dfe 0xdf46652f 0xa80f11f0 0xfda24c2e 0xdecd4715 0x838b2711 
+    t(45) : 0x72ab4b91 0x26628815 0x9d4baf93 0x17aa0dfe 0xb7755da1 0xa80f11f0 0xfda24c2e 0xdecd4715 
+    t(46) : 0xa14c14b0 0x72ab4b91 0x26628815 0x9d4baf93 0xd57b94a9 0xb7755da1 0xa80f11f0 0xfda24c2e 
+    t(47) : 0x4172328d 0xa14c14b0 0x72ab4b91 0x26628815 0xfecf0bc6 0xd57b94a9 0xb7755da1 0xa80f11f0 
+    t(48) : 0x5757ceb 0x4172328d 0xa14c14b0 0x72ab4b91 0xbd714038 0xfecf0bc6 0xd57b94a9 0xb7755da1 
+    t(49) : 0xf11bfaa8 0x5757ceb 0x4172328d 0xa14c14b0 0x6e5c390c 0xbd714038 0xfecf0bc6 0xd57b94a9 
+    t(50) : 0x7a0508a1 0xf11bfaa8 0x5757ceb 0x4172328d 0x52f1ccf7 0x6e5c390c 0xbd714038 0xfecf0bc6 
+    t(51) : 0x886e7a22 0x7a0508a1 0xf11bfaa8 0x5757ceb 0x49231c1e 0x52f1ccf7 0x6e5c390c 0xbd714038 
+    t(52) : 0x101fd28f 0x886e7a22 0x7a0508a1 0xf11bfaa8 0x529e7d00 0x49231c1e 0x52f1ccf7 0x6e5c390c 
+    t(53) : 0xf5702fdb 0x101fd28f 0x886e7a22 0x7a0508a1 0x9f4787c3 0x529e7d00 0x49231c1e 0x52f1ccf7 
+    t(54) : 0x3ec45cdb 0xf5702fdb 0x101fd28f 0x886e7a22 0xe50e1b4f 0x9f4787c3 0x529e7d00 0x49231c1e 
+    t(55) : 0x38cc9913 0x3ec45cdb 0xf5702fdb 0x101fd28f 0x54cb266b 0xe50e1b4f 0x9f4787c3 0x529e7d00 
+    t(56) : 0xfcd1887b 0x38cc9913 0x3ec45cdb 0xf5702fdb 0x9b5e906c 0x54cb266b 0xe50e1b4f 0x9f4787c3 
+    t(57) : 0xc062d46f 0xfcd1887b 0x38cc9913 0x3ec45cdb 0x7e44008e 0x9b5e906c 0x54cb266b 0xe50e1b4f 
+    t(58) : 0xffb70472 0xc062d46f 0xfcd1887b 0x38cc9913 0x6d83bfc6 0x7e44008e 0x9b5e906c 0x54cb266b 
+    t(59) : 0xb6ae8fff 0xffb70472 0xc062d46f 0xfcd1887b 0xb21bad3d 0x6d83bfc6 0x7e44008e 0x9b5e906c 
+    t(60) : 0xb85e2ce9 0xb6ae8fff 0xffb70472 0xc062d46f 0x961f4894 0xb21bad3d 0x6d83bfc6 0x7e44008e 
+    t(61) : 0x4d24d6c 0xb85e2ce9 0xb6ae8fff 0xffb70472 0x948d25b6 0x961f4894 0xb21bad3d 0x6d83bfc6 
+    t(62) : 0xd39a2165 0x4d24d6c 0xb85e2ce9 0xb6ae8fff 0xfb121210 0x948d25b6 0x961f4894 0xb21bad3d 
+    t(63) : 0x506e3058 0xd39a2165 0x4d24d6c 0xb85e2ce9 0x5ef50f24 0xfb121210 0x948d25b6 0x961f4894
+
+    Sehingga working variable yang baru adalah :
+
+    Hasil operasi working variable block ke-i = 1 dari total N = 1 block.
+    a =  t(63)a = 0x506e3058
+    b =  t(63)b = 0xd39a2165
+    c =  t(63)c = 0x04d24d6c
+    d =  t(63)d = 0xb85e2ce9
+    e =  t(63)e = 0x5ef50f24
+    f =  t(63)f = 0xfb121210
+    g =  t(63)g = 0x948d25b6
+    h =  t(63)h = 0x961f4894
+
+B.4 Menjumlahkan hash value.
+
+    working variable final blok ke N pada bagian B.3 ditambahkan dengan Hash blok ke-(i-1) atau
+    Hash blok sebelumnya.
+
+    pada proses iterasi terakhir didapatkan hasil sebagai Berikut :
+
+    a = t(63)a = 0x506e3058
+    b = t(63)b = 0xd39a2165
+    c = t(63)c = 0x04d24d6c
+    d = t(63)d = 0xb85e2ce9
+    e = t(63)e = 0x5ef50f24
+    f = t(63)f = 0xfb121210
+    g = t(63)g = 0x948d25b6
+    h = t(63)h = 0x961f4894
+
+    H(i-1)0 = 0x6a09e667 
+    H(i-1)1 = 0xbb67ae85 
+    H(i-1)2 = 0x3c6ef372 
+    H(i-1)3 = 0xa54ff53a 
+    H(i-1)4 = 0x510e527f 
+    H(i-1)5 = 0x9b05688c 
+    H(i-1)6 = 0x1f83d9ab 
+    H(i-1)7 = 0x5be0cd19
+
+    Final mesage digest :
+    
+    H(i)0 = a + H(i-1)0
+    H(i)1 = b + H(i-1)1
+    H(i)2 = c + H(i-1)2
+    H(i)3 = d + H(i-1)3
+    H(i)4 = e + H(i-1)4
+    H(i)5 = f + H(i-1)5
+    H(i)6 = g + H(i-1)6
+    H(i)7 = h + H(i-1)7
+
+    H(i)0 = 0x506e3058 + 0x6a09e667 =  BA7816BF
+    H(i)1 = 0xd39a2165 + 0xbb67ae85 = 18F01CFEA
+    H(i)2 = 0x04d24d6c + 0x3c6ef372 =  414140DE
+    H(i)3 = 0xb85e2ce9 + 0xa54ff53a = 15DAE2223
+    H(i)4 = 0x5ef50f24 + 0x510e527f =  B00361A3
+    H(i)5 = 0xfb121210 + 0x9b05688c = 196177A9C
+    H(i)6 = 0x948d25b6 + 0x1f83d9ab =  B410FF61
+    H(i)7 = 0x961f4894 + 0x5be0cd19 =  F20015AD
+
+Hasil fungsi hashing dari message 'abc' :
+
+BA7816BF 8F01CFEA 414140DE 5DAE2223 B00361A3 96177A9C B410FF61 F20015AD
+
+Jika hasil penjumlahan lebih dari 8 digit hexa maka yang diambil adalah 8 digit dari belakang.
+
+Pada contoh di atas karena message bloknya hanya ada satu maka H(i-1) menggunakan nilai inisial hash (H(0)).
+
+Selesai.
