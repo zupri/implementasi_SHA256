@@ -35,9 +35,8 @@ else:
     print('Ketik sbb :\n{} message [v]\n'.format(sys.argv[0]))
     print('option :')
     print('    message    message burapa string langsung atau file')
-    print('    v          Menampilkan hasil operasi jika tidak ada maka')
-    print('               panjang message dibawah atau sama dengan 1976')
-    print('               akan ditampilkan')
+    print('    v          Menampilkan hasil operasi yang panjang message')
+    print('               lebih dari atau sama dengan 1976')
     exit()
 
 lenMessage = len(message)*8
