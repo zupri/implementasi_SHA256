@@ -4,7 +4,11 @@ import sys
 import os.path
 import operation as opr
 
-
+def text_aligment(text: str, length: int = 128):
+    t = ''
+    for i in range(0, len(text),length):
+        t += str(text[i:i+length])+'\n'
+    return t
 
 if len(sys.argv) is 3 or len(sys.argv) is 2:
     file = sys.argv[1]
@@ -13,9 +17,11 @@ if len(sys.argv) is 3 or len(sys.argv) is 2:
         view = sys.argv[2]
     
     if os.path.isfile(file):
-        message = open(file, "rb").read()
+        with open(file, "rb") as f :
+            message = f.read()
         if isinstance(message, str) :
             message = bytearray(message)
+            print(f'message dari file : {file}')
         elif isinstance(message, bytes):
             message = bytearray(message)
         elif not isinstance(message, bytearray):
@@ -23,8 +29,8 @@ if len(sys.argv) is 3 or len(sys.argv) is 2:
             raise TypeError
     else:
         message = bytearray(file,'utf-8')
-        print(128*'=')
-        print('file tidak ditemukan :\n Message = {}'.format(file))
+        print('='*128)
+        print('file tidak ditemukan :\nMessage = {}'.format(file))
 else:
     print('Ketik sbb :\n{} message [v]\n'.format(sys.argv[0]))
     print('option :')
@@ -41,13 +47,23 @@ if view == "v" or lenMessage <= 1976 :
 else :
     show = False
 
+info_message = str(f'! Panjang Message {lenMessage} lebih dari 1976, hasil tidak ditampilkan')
+print('='*128)
+print('Message dalam (hex) :')
+print('-'*128)
 if show :
-    print('Message asli (hex) :\n',message.hex())
+    print(text_aligment(message.hex()))
+else:
+    print(info_message)
+print('='*128)
 
 
 # A. PREPROCESSING
-if show :
-    print('\nA. PREPROCESSING')
+
+print('\n')
+print('='*128)
+print('A. PREPROCESSING')
+print('-'*128)
 
 l = len(message)*8 # Jumlah bit = byte*8
 print('Panjang message asli (bit) = ',l)
@@ -72,8 +88,13 @@ if (len(message) * 8) % 512 == 0 :
 else:
     print('Padding tidak benar message {} mod 512 != 0'.format(len(message)*8))
 
-if show :    
-    print('message padding (hex) :\n{}'.format(message.hex()))
+
+print('message padding (hex) :')
+if show :
+    print(text_aligment(message.hex()))
+else:
+    print(info_message)
+print('-'*128)
 
 
 # A.2 Parsing message kedalam block
@@ -84,10 +105,10 @@ for i in range(0, len(message), 64): # 64 bytes adalah 512 bits
 Nblock = (len(message)*8)//512
 print('Jumlah N blok = ', Nblock)
 
-if show :    
-    for index, val in enumerate(blocks) :
-        print('M({}) :\n{}'.format(index+1,val.hex()))
-    print(128*'=','\n')
+  
+for index, val in enumerate(blocks) :
+    print('M({}) :\n{}'.format(index+1,val.hex()))
+print(128*'=','\n')
 
 # A.3 Setting nilai inisial Hash.
 h0 = 0x6a09e667
@@ -101,18 +122,23 @@ h7 = 0x5be0cd19
 
 # B. HASH COMPUTATION
 
-if show :
-    print('B. HASH COMPUTATION\n')
+
+print('='*128)
+print('B. HASH COMPUTATION\n')
+print('-'*128)
 
 # B. Iterasi N block
 for index, message_block in enumerate(blocks):
-    
-    if show :
-        print('==================== Blok ke-{} dari total {} blok ===================='.format(index+1,Nblock))
+    blok_header = f' Blok ke-{index+1} dari total {Nblock} blok '
+    odd = 0 if (len(blok_header)%2 == 0) else 1
+    print('='*(63-len(blok_header)//2) + blok_header + '='*(63-len(blok_header)//2) + '='*odd)
 
     # B.1 Menyiapkan message schedule
-    if show :
-        print('B.1 Menyiapkan message schedule')
+    
+    print('B.1 Menyiapkan message schedule')
+    if not show :
+        print(f'    {info_message}')
+    
     message_schedule = []
     for t in range(0, 64):
 
@@ -131,18 +157,20 @@ for index, message_block in enumerate(blocks):
             message_schedule.append(schedule)
     
     if show :
-        print('Message schedule M({}):'.format(index+1))
-        print('untuk t0 s/d t15 :')
+        print('    Message schedule M({}):'.format(index+1))
+        print('    untuk t0 s/d t15 :')
         for idx, val in enumerate(message_schedule) :
             if idx <= 15:
                 print('    W[{}] = M({})[{}] =  {}'.format(idx,index+1,idx,val.hex()))
 
-        print('\nuntuk t16 s/d t63 :')
+        print('\n    untuk t16 s/d t63 :')
         for idx, val in enumerate(message_schedule) :
             if idx >= 16:
                 print('    W[{}] = M({})[{}] =  {}'.format(idx,index+1,idx,val.hex()))
 
    # B.2 Inisialisasi delapan working variable
+    print('\nB.2 Inisialisasi delapan working variable')
+
     a = h0
     b = h1
     c = h2
@@ -151,21 +179,19 @@ for index, message_block in enumerate(blocks):
     f = h5
     g = h6
     h = h7
+        
+    print('    Hash value ke-(i-1) block ke-{} dari total {} block :'.format(index+1,Nblock))    
+    print('    H({})0 = {} '.format(index,hex(h0)))
+    print('    H({})1 = {} '.format(index,hex(h1)))
+    print('    H({})2 = {} '.format(index,hex(h2)))
+    print('    H({})3 = {} '.format(index,hex(h3)))
+    print('    H({})4 = {} '.format(index,hex(h4)))
+    print('    H({})5 = {} '.format(index,hex(h5)))
+    print('    H({})6 = {} '.format(index,hex(h6)))
+    print('    H({})7 = {} '.format(index,hex(h7)))    
     
-    if show :
-        print('    Hash value ke-(i-1) block ke-{} dari total {} block :'.format(index+1,Nblock))
-        print('    H({})0 = {} '.format(index,hex(h0)))
-        print('    H({})1 = {} '.format(index,hex(h1)))
-        print('    H({})2 = {} '.format(index,hex(h2)))
-        print('    H({})3 = {} '.format(index,hex(h3)))
-        print('    H({})4 = {} '.format(index,hex(h4)))
-        print('    H({})5 = {} '.format(index,hex(h5)))
-        print('    H({})6 = {} '.format(index,hex(h6)))
-        print('    H({})7 = {} '.format(index,hex(h7)))
-
-    if show :
-        print('\nB.3 Menghitung working variable yang baru.')
-        print('    t(t) |     a     |     b    |    c     |     d    |     e    |     f    |     g    |     h     |')
+    print('\nB.3 Menghitung working variable yang baru.')
+    print('    t(t) |     a     |     b    |    c     |     d    |     e    |     f    |     g    |     h     |')
     
     # B.3 Menghitung working variable yang baru.
     for t in range(64):
@@ -184,22 +210,24 @@ for index, message_block in enumerate(blocks):
         a = (t1 + t2) % 2**32
 
         if show :
-            print('    t({}) : {} {} {} {} {} {} {} {} '.format(t,hex(a),hex(b),hex(c),hex(d),hex(e),hex(f),hex(g),hex(h)))
+            print(f'    t({t}) : {hex(a)} {hex(b)} {hex(c)} {hex(d)} {hex(e)} {hex(f)} {hex(g)} {hex(h)} ')
 
-    if show :
-        print('    Hasil operasi working variable block ke-i = {} dari total N = {} block.'.format(index+1,Nblock))
-        print('    a = ',hex(a))
-        print('    b = ',hex(b))
-        print('    c = ',hex(c))
-        print('    d = ',hex(d))
-        print('    e = ',hex(e))
-        print('    f = ',hex(f))
-        print('    g = ',hex(g))
-        print('    h = ',hex(h))
+    if not show :
+        print(f'    {info_message}')
+
+    print('\n    Hasil operasi working variable block(i) {} dari tota(N) {} block.'.format(index+1,Nblock))
+    print('    a = ',hex(a))
+    print('    b = ',hex(b))
+    print('    c = ',hex(c))
+    print('    d = ',hex(d))
+    print('    e = ',hex(e))
+    print('    f = ',hex(f))
+    print('    g = ',hex(g))
+    print('    h = ',hex(h))
 
     # B.4 Menjumlahkan hash value.
-    if show :
-        print('B.4 Menjumlahkan hash value.')
+    
+    print('\nB.4 Menjumlahkan hash value.')
     h0 = (h0 + a) % 2**32
     h1 = (h1 + b) % 2**32
     h2 = (h2 + c) % 2**32
@@ -209,15 +237,14 @@ for index, message_block in enumerate(blocks):
     h6 = (h6 + g) % 2**32
     h7 = (h7 + h) % 2**32
 
-    if show :
-        print('    H({})0 = {}'.format(index+1,hex(h0)))
-        print('    H({})1 = {}'.format(index+1,hex(h1)))
-        print('    H({})2 = {}'.format(index+1,hex(h2)))
-        print('    H({})3 = {}'.format(index+1,hex(h3)))
-        print('    H({})4 = {}'.format(index+1,hex(h4)))
-        print('    H({})5 = {}'.format(index+1,hex(h5)))
-        print('    H({})6 = {}'.format(index+1,hex(h6)))
-        print('    H({})7 = {}'.format(index+1,hex(h7)))
+    print('    H({})0 = {}'.format(index+1,hex(h0)))
+    print('    H({})1 = {}'.format(index+1,hex(h1)))
+    print('    H({})2 = {}'.format(index+1,hex(h2)))
+    print('    H({})3 = {}'.format(index+1,hex(h3)))
+    print('    H({})4 = {}'.format(index+1,hex(h4)))
+    print('    H({})5 = {}'.format(index+1,hex(h5)))
+    print('    H({})6 = {}'.format(index+1,hex(h6)))
+    print('    H({})7 = {}'.format(index+1,hex(h7)))
 
 message_digest  = (h0).to_bytes(4, 'big')
 message_digest += (h1).to_bytes(4, 'big')
@@ -228,7 +255,7 @@ message_digest += (h5).to_bytes(4, 'big')
 message_digest += (h6).to_bytes(4, 'big')
 message_digest += (h7).to_bytes(4, 'big')
         
-print(('\nMessage digest dari H(M):\n{}'.format(message_digest.hex()).upper()))
+print(('\nMessage digest Akhir dari H(M):\n{}'.format(message_digest.hex()).upper()))
 
 # H('abc') = ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 
